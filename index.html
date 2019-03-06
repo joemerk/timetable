@@ -11,54 +11,111 @@
   <body>
 
     <div class="hero-unit">
-      <h1 style="display: inline">Timetable for </h1><h1 style="display: inline" id="sid" >STUDENT ID</h1>
-      <p>epic</p>
+        <h1 style="display: inline">Timetable for </h1><h1 style="display: inline" id="sid" >STUDENT ID</h1>
+        <p id="dates">Dates</p>
     </div>
 
     <div class="timetable"></div>
 
     <script src="scripts/timetable.js"></script>
     <script src="scripts/urlparam.js"></script>
-
+    <script src="https://www.gstatic.com/firebasejs/5.8.2/firebase.js"></script>
 
     <script>
-      const params = new URLSearchParams(window.location.search);
-      for (let p of params) {
-      console.log(p);
+       
+      function getLastSunday(d) {
+      sunday = new Date(today);
+      sunday.setDate(sunday.getDate() - sunday.getDay());
+      return sunday;
       }
-      document.getElementById('sid').innerHTML = "hey";
-      document.getElementById('sid').innerHTML = params.get('id');
+     
+      function formatDate(date){
+        var options = {year: 'numeric', month: 'long', day: 'numeric' };
+        return date.toLocaleDateString('en', options);
+      }
 
-      var timetable = new Timetable();
+      var today = new Date();
+      var lastSunday = getLastSunday();
+      lastSunday.setHours(00,00,00);
+      var nextSunday = new Date();
+      nextSunday.setDate(lastSunday.getDate() + 7);
+      nextSunday.setHours(00,00,00);
       
-      timetable.setScope(9,3)
+      var sid;
 
-      timetable.addLocations(['Rotterdam', 'Madrid', 'Los Angeles', 'London', 'New York', 'Jakarta', 'Tokyo']);
+      document.getElementById('dates').innerHTML = formatDate(lastSunday) + " - " + formatDate(nextSunday);
+      
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('id')) {
+        document.getElementById('sid').innerHTML = params.get('id');
+        sid = params.get('id');
+      }
+      else {
+        sid = prompt("Please enter your Student ID [Only the number]", "");
+        document.getElementById('sid').innerHTML = params.get('id');
+      }
 
-      timetable.addEvent('Sightseeing', 'Rotterdam', new Date(2015,7,17,9,00), new Date(2015,7,17,11,30), { url: '#' });
-      timetable.addEvent('Zumba', 'Madrid', new Date(2015,7,17,12), new Date(2015,7,17,13), { url: '#' });
-      timetable.addEvent('Zumbu', 'Madrid', new Date(2015,7,17,13,30), new Date(2015,7,17,15), { url: '#' });
-      timetable.addEvent('Lasergaming', 'London', new Date(2015,7,17,17,45), new Date(2015,7,17,19,30), { class: 'vip-only', data: { maxPlayers: 14, gameType: 'Capture the flag' } });
-      timetable.addEvent('All-you-can-eat grill', 'New York', new Date(2015,7,17,21), new Date(2015,7,18,1,30), { url: '#' });
-      timetable.addEvent('Hackathon', 'Tokyo', new Date(2015,7,17,11,30), new Date(2015,7,17,20)); // options attribute is not used for this event
-      timetable.addEvent('Tokyo Hackathon Livestream', 'Los Angeles', new Date(2015,7,17,12,30), new Date(2015,7,17,16,15)); // options attribute is not used for this event
-      timetable.addEvent('Lunch', 'Jakarta', new Date(2015,7,17,9,30), new Date(2015,7,17,11,45), { onClick: function(event) {
-        window.alert('You clicked on the ' + event.name + ' event in ' + event.location + '. This is an example of a click handler');
-      }});
-      timetable.addEvent('Cocktails', 'Rotterdam', new Date(2015,7,18,00,00), new Date(2015,7,18,02,00), { class: 'vip-only' });
+      var config = {
+      apiKey: "AIzaSyCO4d6jql0X5GsP-lB4HJqoyUpuyXUswXQ",
+      authDomain: "fir-61465.firebaseapp.com",
+      databaseURL: "https://fir-61465.firebaseio.com",
+      projectId: "fir-61465",
+      storageBucket: "fir-61465.appspot.com",
+      messagingSenderId: "550219114142"
+      };
 
+      firebase.initializeApp(config);
+      var database = firebase.firestore();
+
+      days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+      var timetable = new Timetable();
+      timetable.setScope(9,18);
+      timetable.addLocations(days);
+
+      function popPersonal() {
+      return database.collection('Students').doc(sid).collection('Timetable').get().then(snapshot => {
+          snapshot.docs.forEach(doc => {
+              var date = doc.data().Date.toDate();
+              if ((date < lastSunday || date >= nextSunday) || (date.getHours() < 9 || date.getHours() > 18)) {
+                return;
+              }
+              var _date = new Date(date.getTime());
+              _date.setHours(_date.getHours() + 1);
+              timetable.addEvent(doc.data().Description, days[date.getDay()], date, _date, { url: '#' });
+              
+          });
+      });
+      }
+
+      function popLectures() {
+      var smodules;
+      return database.collection('Students').doc(sid).get().then( (dc) => {
+            smodules = dc.get("Modules");
+            return;
+      }).then( a => {
+         return database.collection('Timetable').get().then( (snapshot) => {
+         snapshot.docs.forEach(doc => {
+         var date = doc.data().Time.toDate();
+         if (!(smodules.includes(doc.data().Module)) || (date < lastSunday || date >= nextSunday) || (date.getHours() < 9 || date.getHours() > 18)) {
+             return;
+         }
+         var _date = new Date(date.getTime());
+         _date.setHours(_date.getHours() + 1);
+         var description = doc.data().Title + " [" + doc.data().Room + "]";
+         timetable.addEvent(description, days[date.getDay()], date, _date, { url: '#' });
+         return;
+            });
+          });
+        });
+      }
+
+      popPersonal().then(e => {
+      popLectures().then(f => {
       var renderer = new Timetable.Renderer(timetable);
       renderer.draw('.timetable');
+      });
+    });
     </script>
 
-    <!-- Google Analytics: change UA-XXXXX-X to be your site's ID. -->
-    <script>
-      (function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=
-      function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;
-      e=o.createElement(i);r=o.getElementsByTagName(i)[0];
-      e.src='//www.google-analytics.com/analytics.js';
-      r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));
-      ga('create','UA-37417680-5');ga('send','pageview');
-    </script>
 </body>
 </html>
