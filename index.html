@@ -75,7 +75,7 @@
       function popPersonal() {
       return database.collection('Students').doc(sid).collection('Timetable').get().then(snapshot => {
           snapshot.docs.forEach(doc => {
-              var date = doc.data().Date.toDate();
+              var date = new Date.UTC(doc.data().Date.toDate());
               if ((date < lastSunday || date >= nextSunday) || (date.getHours() < 9 || date.getHours() > 18)) {
                 return;
               }
@@ -95,7 +95,7 @@
       }).then( a => {
          return database.collection('Timetable').get().then( (snapshot) => {
          snapshot.docs.forEach(doc => {
-         var date = doc.data().Time.toDate();
+         var date = new Date.UTC(doc.data().Time.toDate());
          if (!(smodules.includes(doc.data().Module)) || (date < lastSunday || date >= nextSunday) || (date.getHours() < 9 || date.getHours() > 18)) {
              return;
          }
