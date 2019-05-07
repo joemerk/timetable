@@ -76,10 +76,11 @@
       return database.collection('Students').doc(sid).collection('Timetable').get().then(snapshot => {
           snapshot.docs.forEach(doc => {
               var date = doc.data().Date.toDate();
+              date.setHours(date.getHours() + 1); //temp fix
               if ((date < lastSunday || date >= nextSunday) || (date.getHours() < 9 || date.getHours() > 18)) {
                 return;
               }
-             date.setHours(date.getHours() + 1); //temp fix
+            
               var _date = new Date(date.getTime());
               _date.setHours(_date.getHours() + 1);
               timetable.addEvent(doc.data().Description, days[date.getDay()], date, _date, { url: '#' });
@@ -97,10 +98,11 @@
          return database.collection('Timetable').get().then( (snapshot) => {
          snapshot.docs.forEach(doc => {
          var date = doc.data().Time.toDate();
+         date.setHours(date.getHours() + 1); //temp fix
          if (!(smodules.includes(doc.data().Module)) || (date < lastSunday || date >= nextSunday) || (date.getHours() < 9 || date.getHours() > 18)) {
              return;
          }
-         date.setHours(date.getHours() + 1); //temp fix
+        
          var _date = new Date(date.getTime());
          _date.setHours(_date.getHours() + 1);
          var description = doc.data().Title + " [" + doc.data().Room + "]";
